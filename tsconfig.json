@@ -1,6 +1,5 @@
 {
   "files": [],
-  "exclude": ["supabase/functions", "services/pdf-service", "node_modules"],
   "references": [
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" }

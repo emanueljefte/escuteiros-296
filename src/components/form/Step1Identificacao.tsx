@@ -14,7 +14,7 @@ export default function Step1Identificacao() {
 
       <div className="space-y-4">
         <div>
-          <label className={labelClass}>Nome completo</label>
+          <label className={labelClass}>Nome completo <span className='text-red-700'>*</span></label>
           <input {...register('nome_completo')} className={inputClass} />
           {errors.nome_completo && <p className="mt-1 text-xs text-red-600">{errors.nome_completo.message}</p>}
         </div>
@@ -57,8 +57,9 @@ export default function Step1Identificacao() {
 
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className={labelClass}>Data de Nascimento</label>
+            <label className={labelClass}>Data de Nascimento <span className='text-red-700'>*</span></label>
             <input type="date" {...register('data_nascimento')} className={inputClass} />
+            {errors.data_nascimento && <p className="mt-1 text-xs text-red-600">{errors.data_nascimento.message}</p>}
           </div>
           <div>
             <label className={labelClass}>Estado Civil</label>
@@ -97,8 +98,9 @@ export default function Step1Identificacao() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelClass}>Nome do 1º Encarregado</label>
+            <label className={labelClass}>Nome do 1º Encarregado <span className='text-red-700'>*</span></label>
             <input {...register('nome_encarregado_1')} className={inputClass} />
+            {errors.nome_encarregado_1 && <p className="mt-1 text-xs text-red-600">{errors.nome_encarregado_1.message}</p>}
           </div>
           <div>
             <label className={labelClass}>Parentesco</label>
@@ -113,8 +115,9 @@ export default function Step1Identificacao() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelClass}>Contacto do 1º Encarregado</label>
+            <label className={labelClass}>Contacto do 1º Encarregado <span className='text-red-700'>*</span></label>
             <input {...register('contacto_encarregado_1')} className={inputClass} />
+            {errors.nome_completo && <p className="mt-1 text-xs text-red-600">{errors.nome_completo.message}</p>}
           </div>
           <div>
             <label className={labelClass}>WhatsApp</label>

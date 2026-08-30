@@ -43,18 +43,53 @@ export default function Inscricao() {
   const methods = useForm<EscuteiroFormInput>({
     resolver: zodResolver(escuteiroSchema),
     defaultValues: {
-      termo_aceite: false,
-      baptizado: false,
-      pertence_outro_grupo: false,
-      sofre_doenca: false,
-    },
+    filho_de: '',
+    e_de: '',
+    tipo_documento: undefined,
+    numero_documento: '',
+    provincia: undefined,
+    data_nascimento: '',
+    nome_encarregado_1: '',
+    contacto_encarregado_1: '',
+    estado_civil: undefined,
+    sexo: undefined,
+    morada: '',
+    contacto_pessoal: '',
+    whatsapp_pessoal: '',
+    nome_encarregado_2: '',
+    parentesco_1: undefined,
+    parentesco_2: undefined,
+    contacto_encarregado_2: '',
+    whatsapp_encarregado_1: '',
+    whatsapp_encarregado_2: '',
+    habilitacao_literaria: undefined,
+    nome_instituicao: '',
+    local_escola: '',
+    profissao: '',
+    local_trabalho: '',
+    outras_ocupacao: '',
+    seccao: undefined,
+    categoria: undefined,
+    patrulha_bando_equipe: '',
+    cargo_funcao: undefined,
+    data_promessa: '',
+    situacao: undefined,
+    igreja: '',
+    baptizado: false,
+    pertence_outro_grupo: false,
+    pertence_outro_grupo_qual: '',
+    sofre_doenca: false,
+    sofre_doenca_qual: '',
+    obs: '',
+    termo_aceite: false,
+  },
   });
 
   const StepComponent = steps[step];
   const isLast = step === steps.length - 1;
 
   const camposPorStep: (keyof EscuteiroFormInput)[][] = [
-    ['nome_completo', 'data_nascimento', 'contacto_pessoal', 'nome_encarregado_1', 'contacto_encarregado_1'], // Step1
+    ['nome_completo', 'data_nascimento', 'nome_encarregado_1', 'contacto_encarregado_1'], // Step1
     [],                                                 // Step2 — sem obrigatórios
     [],                                                 // Step3 — sem obrigatórios
     [],                                                 // FotoCaptura — opcional

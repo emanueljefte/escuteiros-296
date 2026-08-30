@@ -4,7 +4,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import {
-  Users, Stethoscope, AlertTriangle, Accessibility, Search, Pencil, LogOut,
+  Users, Stethoscope, Search, Pencil, LogOut,
   FileText,
   CheckCircle2,
   Download,
@@ -14,11 +14,12 @@ import { supabase } from '../lib/supabase';
 interface Escuteiro {
   id: string;
   nome_completo: string;
-  municipio: string;
+  provincia: string;
   seccao: string;
-  doenca: boolean;
-  alergia: boolean;
-  deficiencia: boolean;
+  categoria: string;
+  situacao: string;
+  sofre_doenca: boolean;
+  baptizado: boolean;
   pdf_gerado: boolean;
   pdf_gerado_em: string;
   created_at: string;
@@ -37,16 +38,17 @@ export default function Dashboard() {
     let ativo = true;
 
     async function carregarDados() {
-      console.log(await supabase.auth.getSession());
+      const { data: sessao } = await supabase.auth.getSession();
+      console.log('sessão:', sessao);
       const { data, error } = await supabase
         .from('escuteiros')
-        .select('id, nome_completo, municipio, seccao, doenca, alergia, deficiencia, created_at, pdf_gerado, pdf_gerado_em')
+        .select('id, nome_completo, provincia, seccao, categoria, situacao, sofre_doenca, baptizado, created_at, pdf_gerado, pdf_gerado_em')
         .order('created_at', { ascending: false });
+      console.log('data:', data, 'error:', error);
+
 
       if (!ativo) return;
       if (!error && data) setRegistos(data);
-      console.log(data);
-
       setLoading(false);
     }
 
@@ -88,22 +90,22 @@ export default function Dashboard() {
   }
 
   const total = registos.length;
-  const comDoenca = registos.filter((r) => r.doenca).length;
-  const comAlergia = registos.filter((r) => r.alergia).length;
-  const comDeficiencia = registos.filter((r) => r.deficiencia).length;
+  const comDoenca = registos.filter((r) => r.sofre_doenca).length;
+  const baptizados = registos.filter((r) => r.baptizado).length;
+  const activos = registos.filter((r) => r.situacao === 'Activo').length;
 
   const porSeccao = useMemo(() => Object.entries(
     registos.reduce<Record<string, number>>((acc, r) => {
-      const s = r.seccao || 'Não definida';
+      const s = (r.seccao || 'Não definida').trim();
       acc[s] = (acc[s] || 0) + 1;
       return acc;
     }, {})
   ).map(([name, total]) => ({ name, total })), [registos]);
 
-  const porMunicipio = useMemo(() => Object.entries(
+  const porProvincia = useMemo(() => Object.entries(
     registos.reduce<Record<string, number>>((acc, r) => {
-      const m = r.municipio || 'Não definido';
-      acc[m] = (acc[m] || 0) + 1;
+      const p = r.provincia || 'Não definida';
+      acc[p] = (acc[p] || 0) + 1;
       return acc;
     }, {})
   ).map(([name, value]) => ({ name, value })), [registos]);
@@ -156,8 +158,8 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <KpiCard icon={<Users size={18} />} label="Total de Inscritos" valor={total} cor="aea-roxo" loading={loading} />
             <KpiCard icon={<Stethoscope size={18} />} label="Com Doença" valor={comDoenca} cor="amber-500" loading={loading} />
-            <KpiCard icon={<AlertTriangle size={18} />} label="Com Alergia" valor={comAlergia} cor="red-500" loading={loading} />
-            <KpiCard icon={<Accessibility size={18} />} label="Com Deficiência" valor={comDeficiencia} cor="blue-500" loading={loading} />
+            <KpiCard icon={<CheckCircle2 size={18} />} label="Activos" valor={activos} cor="blue-500" loading={loading} />
+            <KpiCard icon={<Users size={18} />} label="Baptizados" valor={baptizados} cor="green-500" loading={loading} />
           </div>
         </section>
 
@@ -186,16 +188,16 @@ export default function Dashboard() {
             </div>
 
             <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-              <p className="mb-3 text-sm font-semibold text-gray-700">Por Município</p>
+              <p className="mb-3 text-sm font-semibold text-gray-700">Por Província</p>
               {loading ? (
                 <SkeletonChart />
-              ) : porMunicipio.length === 0 ? (
-                <EstadoVazio texto="Sem dados de município ainda" />
+              ) : porProvincia.length === 0 ? (
+                <EstadoVazio texto="Sem dados de província ainda" />
               ) : (
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
-                    <Pie data={porMunicipio} dataKey="value" nameKey="name" outerRadius={80} label>
-                      {porMunicipio.map((_, i) => (
+                    <Pie data={porProvincia} dataKey="value" nameKey="name" outerRadius={80} label>
+                      {porProvincia.map((_, i) => (
                         <Cell key={i} fill={CORES_GRAFICO[i % CORES_GRAFICO.length]} />
                       ))}
                     </Pie>
@@ -235,7 +237,7 @@ export default function Dashboard() {
                   <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                     <th className="px-4 py-3">Nome</th>
                     <th className="px-4 py-3">Secção</th>
-                    <th className="px-4 py-3">Município</th>
+                    <th className="px-4 py-3">Província</th>
                     <th className="px-4 py-3">Saúde</th>
                     <th className="px-4 py-3 text-right">Ações</th>
                   </tr>
@@ -249,13 +251,12 @@ export default function Dashboard() {
                           {r.seccao || '—'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{r.municipio || '—'}</td>
+                      <td className="px-4 py-3 text-gray-600">{r.provincia || '—'}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          {r.doenca && <Selo cor="amber" texto="Doença" />}
-                          {r.alergia && <Selo cor="red" texto="Alergia" />}
-                          {r.deficiencia && <Selo cor="blue" texto="Defic." />}
-                          {!r.doenca && !r.alergia && !r.deficiencia && <span className="text-xs text-gray-400">—</span>}
+                          {r.sofre_doenca && <Selo cor="amber" texto="Doença" />}
+                          {r.situacao && <Selo cor="blue" texto={r.situacao} />}
+                          {!r.sofre_doenca && !r.situacao && <span className="text-xs text-gray-400">—</span>}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">

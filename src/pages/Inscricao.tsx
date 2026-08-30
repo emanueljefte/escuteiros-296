@@ -12,6 +12,11 @@ import FotoCaptura from '../components/form/FotoCaptura';
 import Assinatura from '../components/form/Assinatura';
 import TermoAceitacao from '../components/form/TermoAceitacao';
 import { enviarFicheiro } from '../lib/upload';
+import TelaBoasVindas from '../components/form/TelaBoasVindas';
+import TelaConcluido from '../components/form/TelaConcluido';
+
+type Feedback = { tipo: 'sucesso' | 'aviso' | 'erro'; texto: string };
+type Tela = 'boas-vindas' | 'formulario' | 'concluido';
 
 const steps = [
   Step1Identificacao,
@@ -22,8 +27,6 @@ const steps = [
   TermoAceitacao,
 ];
 
-type Feedback = { tipo: 'sucesso' | 'aviso' | 'erro'; texto: string };
-
 const cores: Record<Feedback['tipo'], string> = {
   sucesso: 'bg-green-600',
   aviso: 'bg-amber-500',
@@ -31,6 +34,7 @@ const cores: Record<Feedback['tipo'], string> = {
 };
 
 export default function Inscricao() {
+  const [tela, setTela] = useState<Tela>('boas-vindas');
   const [step, setStep] = useState(0);
   const [foto, setFoto] = useState<Blob>();
   const [assinatura, setAssinatura] = useState<Blob>();
@@ -38,34 +42,38 @@ export default function Inscricao() {
 
   const methods = useForm<EscuteiroFormInput>({
     resolver: zodResolver(escuteiroSchema),
-    defaultValues: { termo_aceite: false, baptizado: false, doenca: false, alergia: false, deficiencia: false },
+    defaultValues: {
+      termo_aceite: false,
+      baptizado: false,
+      pertence_outro_grupo: false,
+      sofre_doenca: false,
+    },
   });
 
   const StepComponent = steps[step];
   const isLast = step === steps.length - 1;
 
-const camposPorStep: (keyof EscuteiroFormInput)[][] = [
-  ['nome_completo', 'telefone'],                    // Step1 (só os obrigatórios)
-  [],                                                 // Step2 — sem obrigatórios
-  [],                                                 // Step3 — sem obrigatórios
-  [],                                                 // FotoCaptura — opcional
-  [],                                                 // Assinatura — opcional
-  ['termo_aceite'],                                   // TermoAceitacao
-];
+  const camposPorStep: (keyof EscuteiroFormInput)[][] = [
+    ['nome_completo', 'data_nascimento', 'contacto_pessoal', 'nome_encarregado_1', 'contacto_encarregado_1'], // Step1
+    [],                                                 // Step2 — sem obrigatórios
+    [],                                                 // Step3 — sem obrigatórios
+    [],                                                 // FotoCaptura — opcional
+    [],                                                 // Assinatura — opcional
+    ['termo_aceite'],                                   // TermoAceitacao
+  ];
 
-async function avancar() {
-  const campos = camposPorStep[step];
-  const valido = campos.length === 0 ? true : await methods.trigger(campos);
-  if (valido) setStep((s) => s + 1);
-}
+  async function avancar() {
+    const campos = camposPorStep[step];
+    const valido = campos.length === 0 ? true : await methods.trigger(campos);
+    if (valido) setStep((s) => s + 1);
+  }
 
   async function onSubmit(dados: EscuteiroFormInput) {
     const registoBase = {
       ...dados,
       baptizado: dados.baptizado ?? false,
-      doenca: dados.doenca ?? false,
-      alergia: dados.alergia ?? false,
-      deficiencia: dados.deficiencia ?? false,
+      pertence_outro_grupo: dados.pertence_outro_grupo ?? false,
+      sofre_doenca: dados.sofre_doenca ?? false,
       local_id: uuidv4(),
       created_at: new Date().toISOString(),
     };
@@ -83,24 +91,34 @@ async function avancar() {
       });
 
       if (error) throw error;
-
-      setFeedback({ tipo: 'sucesso', texto: 'Inscrição submetida com sucesso!' });
+      setTela('concluido');
     } catch {
-      // sem rede ou falha no Supabase — guarda localmente para sincronizar depois
-      await db.escuteiros.add({
-        ...registoBase,
-        foto_blob: foto,
-        assinatura_blob: assinatura,
-        sync_status: 'pendente',
-      });
-      setFeedback({ tipo: 'aviso', texto: 'Sem ligação — inscrição guardada e será enviada automaticamente.' });
+      try {
+        await db.escuteiros.add({
+          ...registoBase,
+          foto_blob: foto,
+          assinatura_blob: assinatura,
+          sync_status: 'pendente',
+        });
+        setTela('concluido');
+      } catch (erroLocal) {
+        console.error(erroLocal);
+        setFeedback({ tipo: 'erro', texto: 'Não foi possível guardar a inscrição. Tenta novamente.' });
+      }
     }
 
-    setStep(0);
     methods.reset();
     setFoto(undefined);
     setAssinatura(undefined);
-    setTimeout(() => setFeedback(null), 5000);
+    setStep(0);
+  }
+
+  if (tela === 'boas-vindas') {
+    return <TelaBoasVindas onComecar={() => setTela('formulario')} />;
+  }
+
+  if (tela === 'concluido') {
+    return <TelaConcluido onCadastrarOutro={() => setTela('formulario')} />;
   }
 
   return (

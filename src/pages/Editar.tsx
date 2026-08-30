@@ -18,19 +18,17 @@ export default function Editar() {
   const [salvando, setSalvando] = useState(false);
 
   const methods = useForm<EscuteiroFormInput>({
-  resolver: zodResolver(escuteiroSchema),
-});
+    resolver: zodResolver(escuteiroSchema),
+  });
 
   useEffect(() => {
     async function carregar() {
-      const { data, error } = await supabase
-        .from('escuteiros')
-        .select('*')
-        .eq('id', id)
-        .single();
-
+      const { data, error } = await supabase.from('escuteiros').select('*').eq('id', id).single();
       if (!error && data) {
-        methods.reset(data);
+        const dadosLimpos = Object.fromEntries(
+          Object.entries(data).map(([k, v]) => [k, v === null ? '' : v])
+        );
+        methods.reset(dadosLimpos as EscuteiroFormInput);
       }
       setLoading(false);
     }
@@ -41,14 +39,15 @@ export default function Editar() {
     setSalvando(true);
     const { error } = await supabase
       .from('escuteiros')
-      .update({
-        ...dados,
-        editado_em: new Date().toISOString(),
-      })
+      .update({ ...dados, editado_em: new Date().toISOString() })
       .eq('id', id);
     setSalvando(false);
 
-    if (!error) navigate('/dashboard');
+    if (error) {
+      console.error('Erro ao guardar:', error);
+      return;
+    }
+    navigate('/dashboard');
   }
 
   if (loading) return <p className="p-6 text-sm text-gray-500">A carregar registo...</p>;
@@ -58,7 +57,7 @@ export default function Editar() {
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={methods.handleSubmit(onSubmit)} className="max-w-md mx-auto p-4">
+      <form onSubmit={methods.handleSubmit(onSubmit, (errs) => console.log('Validação falhou:', errs))} className="max-w-md mx-auto p-4">
         <p className="text-xs text-gray-500 mb-2">Editar inscrição</p>
         <StepComponent />
 

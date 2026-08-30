@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Editar from './pages/Editar';
 import RotaProtegida from './components/RotaProtegida';
 import Login from './pages/Login';
+import PreviewFicha from './pages/PreviewFicha';
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
             </RotaProtegida>
           }
         />
+        <Route path="/pdf/:id" element={<RotaProtegida><PreviewFicha /></RotaProtegida>} />
       </Routes>
     </BrowserRouter>
   );

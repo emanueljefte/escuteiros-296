@@ -2,86 +2,141 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import PizZip from 'npm:pizzip@3';
 import Docxtemplater from 'npm:docxtemplater@3';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+function uint8ToBase64(bytes: Uint8Array): string {
+  const CHUNK_SIZE = 8192;
+  let resultado = '';
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+    const chunk = bytes.subarray(i, i + CHUNK_SIZE);
+    resultado += String.fromCharCode(...chunk);
+  }
+  return btoa(resultado);
+}
+
 Deno.serve(async (req) => {
-  const { id } = await req.json();
-
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  );
-
-  const { data: registo, error } = await supabase
-    .from('escuteiros')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (error || !registo) {
-    return new Response('Registo não encontrado', { status: 404 });
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
   }
 
-  const templateBuf = await Deno.readFile('./template/ficha_template.docx');
-  const zip = new PizZip(templateBuf);
-  const doc = new Docxtemplater(zip, {
-  paragraphLoop: true,
-  linebreaks: true,
-  delimiters: { start: '{{', end: '}}' },
+  try {
+    const { id, overrides, apenasPreview } = await req.json();
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    const { data: registo, error } = await supabase
+      .from('escuteiros')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !registo) {
+      return new Response('Registo não encontrado', { status: 404, headers: corsHeaders });
+    }
+
+    const dados = { ...registo, ...(overrides ?? {}) };
+
+    const { data: templateBlob, error: erroTemplate } = await supabase.storage
+      .from('templates')
+      .download('ficha_template.docx');
+
+    if (erroTemplate || !templateBlob) {
+      throw new Error(`Não foi possível obter o template: ${erroTemplate?.message}`);
+    }
+
+    const templateBuf = new Uint8Array(await templateBlob.arrayBuffer());
+    const zip = new PizZip(templateBuf);
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+      delimiters: { start: '{{', end: '}}' },
+    });
+
+    doc.render({
+  nome_completo: dados.nome_completo,
+  filho_de: dados.filho_de,
+  e_de: dados.e_de,
+  tipo_documento: dados.tipo_documento,
+  numero_documento: dados.numero_documento,
+  provincia: dados.provincia,
+  data_nascimento: dados.data_nascimento,
+  estado_civil: dados.estado_civil,
+  sexo: dados.sexo,
+  morada: dados.morada,
+  contacto_pessoal: dados.contacto_pessoal,
+  whatsapp_pessoal: dados.whatsapp_pessoal,
+  nome_encarregado_1: dados.nome_encarregado_1,
+  parentesco_1: dados.parentesco_1,
+  contacto_encarregado_1: dados.contacto_encarregado_1,
+  whatsapp_encarregado_1: dados.whatsapp_encarregado_1,
+  nome_encarregado_2: dados.nome_encarregado_2,
+  parentesco_2: dados.parentesco_2,
+  contacto_encarregado_2: dados.contacto_encarregado_2,
+  whatsapp_encarregado_2: dados.whatsapp_encarregado_2,
+  habilitacao_literaria: dados.habilitacao_literaria,
+  nome_instituicao: dados.nome_instituicao,
+  local_escola: dados.local_escola,
+  profissao: dados.profissao,
+  local_trabalho: dados.local_trabalho,
+  outras_ocupacao: dados.outras_ocupacao,
+  seccao: dados.seccao,
+  categoria: dados.categoria,
+  patrulha_bando_equipe: dados.patrulha_bando_equipe,
+  cargo_funcao: dados.cargo_funcao,
+  data_promessa: dados.data_promessa,
+  situacao: dados.situacao,
+  igreja: dados.igreja,
+  baptizado: dados.baptizado ? 'Sim' : 'Não',
+  pertence_outro_grupo: dados.pertence_outro_grupo ? 'Sim' : 'Não',
+  pertence_outro_grupo_qual: dados.pertence_outro_grupo_qual,
+  sofre_doenca: dados.sofre_doenca ? 'Sim' : 'Não',
+  sofre_doenca_qual: dados.sofre_doenca_qual,
+  obs: dados.obs,
 });
 
-doc.render({
-  numero_inscricao: registo.numero_inscricao,
-  ano_2digitos: String(new Date(registo.created_at).getFullYear()).slice(-2),
-  nome_completo: registo.nome_completo,
-  filho_de: registo.filho_de,
-  e_de: registo.e_de,
-  bi_numero: registo.bi_numero,
-  cedula_numero: registo.cedula_numero,
-  morada: registo.morada,
-  provincia: registo.provincia,
-  municipio: registo.municipio,
-  estado_civil: registo.estado_civil,
-  telefone: registo.telefone,
-  whatsapp: registo.whatsapp,
-  contacto_encarregado: registo.contacto_encarregado,
-  data_nascimento: registo.data_nascimento,
-  habilitacao_literaria: registo.habilitacao_literaria,
-  profissao: registo.profissao,
-  escola_local_trabalho: registo.escola_local_trabalho,
-  outras_habilidades: registo.outras_habilidades,
-  data_local_investidura: registo.data_local_investidura,
-  bando: registo.bando,
-  patrulha: registo.patrulha,
-  equipe: registo.equipe,
-  cargo: registo.cargo,
-  baptizado_nao: registo.baptizado ? '' : 'X',
-  baptizado_sim: registo.baptizado ? 'X' : '',
-  baptizado_detalhe: registo.baptizado_detalhe,
-  doenca_nao: registo.doenca ? '' : 'X',
-  doenca_sim: registo.doenca ? 'X' : '',
-  doenca_qual: registo.doenca_qual,
-  alergia_nao: registo.alergia ? '' : 'X',
-  alergia_sim: registo.alergia ? 'X' : '',
-  alergia_qual: registo.alergia_qual,
-  deficiencia_nao: registo.deficiencia ? '' : 'X',
-  deficiencia_sim: registo.deficiencia ? 'X' : '',
-  deficiencia_qual: registo.deficiencia_qual,
-});
+    const outputBuf = doc.getZip().generate({ type: 'uint8array' });
+    const resposta = await fetch(Deno.env.get('PDF_SERVICE_URL')!, {
+      method: 'POST',
+      body: JSON.stringify({
+        docxBase64: uint8ToBase64(outputBuf),
+        fotoUrl: dados.foto_url,
+        assinaturaUrl: dados.assinatura_url,
+      }),
+    });
 
-  const outputBuf = doc.getZip().generate({ type: 'uint8array' });
+    if (!resposta.ok) {
+      const texto = await resposta.text();
+      throw new Error(`pdf-service devolveu ${resposta.status}: ${texto}`);
+    }
 
-  const resposta = await fetch(Deno.env.get('PDF_SERVICE_URL')!, {
-  method: 'POST',
-  body: JSON.stringify({
-    docxBase64: btoa(String.fromCharCode(...outputBuf)),
-    fotoUrl: registo.foto_url,
-    assinaturaUrl: registo.assinatura_url,
-  }),
-});
+    const pdfBuf = await resposta.arrayBuffer();
 
-return new Response(await resposta.arrayBuffer(), {
-  headers: {
-    'Content-Type': 'application/pdf',
-    'Content-Disposition': `attachment; filename="ficha_${registo.nome_completo}.pdf"`,
-  },
-});
+    if (!apenasPreview) {
+      await supabase.from('escuteiros').update({
+        pdf_gerado: true,
+        pdf_gerado_em: new Date().toISOString(),
+      }).eq('id', id);
+    }
+
+    return new Response(pdfBuf, {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="ficha_${dados.nome_completo}.pdf"`,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return new Response(JSON.stringify({ erro: String(err) }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 });

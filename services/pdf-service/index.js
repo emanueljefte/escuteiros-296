@@ -20,29 +20,29 @@ app.post('/gerar-pdf', async (req, res) => {
     const pdfDoc = await PDFDocument.load(pdfBuf);
     const page = pdfDoc.getPage(0);
 
-    // Foto — página 1 (índice 0)
+    // Foto — página única (índice 0)
     if (fotoUrl) {
         const fotoBytes = await fetch(fotoUrl).then((r) => r.arrayBuffer());
         const foto = await pdfDoc.embedJpg(fotoBytes).catch(() => pdfDoc.embedPng(fotoBytes));
         const page0 = pdfDoc.getPage(0);
         page0.drawImage(foto, {
-            x: 449.95,
-            y: PAGE_H - 93.75 - 102,   // = 646.14
+            x: 396.70,
+            y: PAGE_H - 45.40 - 102,   // = 694.49
             width: 90.75,
             height: 102,
         });
     }
 
-    // Assinatura — página 2 (índice 1)
+    // Assinatura — mesma página (índice 0)
     if (assinaturaUrl) {
         const assinBytes = await fetch(assinaturaUrl).then((r) => r.arrayBuffer());
         const assinatura = await pdfDoc.embedPng(assinBytes);
-        const page1 = pdfDoc.getPage(1);
-        page1.drawImage(assinatura, {
-            x: 209.2,
-            y: PAGE_H - 261 - 21,     // = 559.89
-            width: 210,
-            height: 21,
+        const page0b = pdfDoc.getPage(0);
+        page0b.drawImage(assinatura, {
+            x: 210,
+            y: PAGE_H - 731 - 10,     // = 100.89
+            width: 235,
+            height: 10,
         });
     }
 

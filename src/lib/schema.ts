@@ -1,40 +1,47 @@
-import z from "zod";
+import { z } from 'zod';
+
+function enumOpcional<T extends [string, ...string[]]>(valores: T) {
+  return z
+    .union([z.enum(valores), z.literal('')])
+    .optional()
+    .transform((val) => (val === '' ? undefined : val));
+}
 
 export const escuteiroSchema = z.object({
   nome_completo: z.string().min(3, 'Nome obrigatório'),
   filho_de: z.string().optional(),
   e_de: z.string().optional(),
-  tipo_documento: z.enum(['Bilhete de Identidade n°', 'Cédula n°']).optional(),
+  tipo_documento: enumOpcional(['Bilhete de Identidade n°', 'Cédula n°']),
   numero_documento: z.string().optional(),
-  provincia: z.enum(['Luanda', 'Kwnza Sul', 'Bengo', 'Malanje', 'Cunene', 'Moxico', 'UIge', 'Zaire', 'Namibe', 'Kuando Kubango']).optional(),
+  provincia: enumOpcional(['Luanda', 'Kwnza Sul', 'Bengo', 'Malanje', 'Cunene', 'Moxico', 'UIge', 'Zaire', 'Namibe', 'Kuando Kubango']),
   data_nascimento: z.string().min(1, 'Data de nascimento obrigatória'),
   nome_encarregado_1: z.string().min(3, 'Nome do encarregado obrigatório'),
   contacto_encarregado_1: z.string().min(9, 'Contacto do encarregado inválido'),
-  estado_civil: z.enum(['Solteiro', 'Casado']).optional(),
-  sexo: z.enum(['Masculino', 'Feminino']).optional(),
+  estado_civil: enumOpcional(['Solteiro', 'Casado']),
+  sexo: enumOpcional(['Masculino', 'Feminino']),
   morada: z.string().optional(),
   contacto_pessoal: z.string().min(9, 'Contacto inválido'),
   whatsapp_pessoal: z.string().optional(),
   nome_encarregado_2: z.string().optional(),
-  parentesco_1: z.enum(['Pai', 'Mãe', 'Tio', 'Avó', 'Tia', 'Avô']).optional(),
-  parentesco_2: z.enum(['Pai', 'Mãe', 'Tio', 'Avó', 'Tia', 'Avô']).optional(),
+  parentesco_1: enumOpcional(['Pai', 'Mãe', 'Tio', 'Avó', 'Tia', 'Avô']),
+  parentesco_2: enumOpcional(['Pai', 'Mãe', 'Tio', 'Avó', 'Tia', 'Avô']),
   contacto_encarregado_2: z.string().optional(),
   whatsapp_encarregado_1: z.string().optional(),
   whatsapp_encarregado_2: z.string().optional(),
 
-  habilitacao_literaria: z.enum(['Ensino Primário 1ª à 6ª classe', 'I Ciclo do Ensino Secundário 7ª à 9ª classe', 'II Ciclo do Ensino Secundário 10ª à 12ª classe', 'Licenciatura', 'Mestrado', 'Doutoramento']).optional(),
+  habilitacao_literaria: enumOpcional(['Ensino Primário 1ª à 6ª classe', 'I Ciclo do Ensino Secundário 7ª à 9ª classe', 'II Ciclo do Ensino Secundário 10ª à 12ª classe', 'Licenciatura', 'Mestrado', 'Doutoramento']),
   nome_instituicao: z.string().optional(),
   local_escola: z.string().optional(),
   profissao: z.string().optional(),
   local_trabalho: z.string().optional(),
   outras_ocupacao: z.string().optional(),
 
-  seccao: z.enum(['Iª Secção  ', 'IIª Secção  ', 'IIIª Secção  ', 'IVª Secção  ', 'Dirigente']).optional(),
-  categoria: z.enum(['Aspirante', 'Noviço', 'Investido', 'Candidato']).optional(),
+  seccao: enumOpcional(['Iª Secção  ', 'IIª Secção  ', 'IIIª Secção  ', 'IVª Secção  ', 'Dirigente']),
+  categoria: enumOpcional(['Aspirante', 'Noviço', 'Investido', 'Candidato']),
   patrulha_bando_equipe: z.string().optional(),
-  cargo_funcao: z.enum(['Guia ', 'Sub Guia', 'Secretário', 'Financeiro', 'Guarda Material', 'Cozinheiro', 'Socorrista', 'Animador']).optional(),
+  cargo_funcao: enumOpcional(['Guia ', 'Sub Guia', 'Secretário', 'Financeiro', 'Guarda Material', 'Cozinheiro', 'Socorrista', 'Animador']),
   data_promessa: z.string().optional(),
-  situacao: z.enum(['Activo', 'Inactivo', 'Transferido', 'Desligado']).optional(),
+  situacao: enumOpcional(['Activo', 'Inactivo', 'Transferido', 'Desligado']),
 
   igreja: z.string().optional(),
   baptizado: z.boolean().default(false),

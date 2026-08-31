@@ -117,7 +117,7 @@ export default function Step1Identificacao() {
           <div>
             <label className={labelClass}>Contacto do 1º Encarregado <span className='text-red-700'>*</span></label>
             <input {...register('contacto_encarregado_1')} className={inputClass} />
-            {errors.nome_completo && <p className="mt-1 text-xs text-red-600">{errors.nome_completo.message}</p>}
+            {errors.contacto_encarregado_1 && <p className="mt-1 text-xs text-red-600">{errors.contacto_encarregado_1.message}</p>}
           </div>
           <div>
             <label className={labelClass}>WhatsApp</label>

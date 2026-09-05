@@ -1,97 +1,104 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useForm, FormProvider } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { escuteiroSchema, type EscuteiroFormInput } from '../lib/schema';
 import { supabase } from '../lib/supabase';
-import Step1Identificacao from '../components/form/Step1Identificacao';
-import Step2Habilitacoes from '../components/form/Step2Habilitacoes';
-import Step3SaudeReligiao from '../components/form/Step3SaudeReligiao';
 
 export default function PreviewFicha() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [aGerar, setAGerar] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const methods = useForm<EscuteiroFormInput>({ resolver: zodResolver(escuteiroSchema) });
+  const [aGerar, setAGerar] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.from('escuteiros').select('*').eq('id', id).single().then(({ data }) => {
-      if (data) methods.reset(data);
-      setLoading(false);
-    });
-  }, [id, methods]);
+    async function carregarEGerarPDF() {
+      if (!id) return;
 
-  async function gerarPreview(guardar: boolean) {
-    setAGerar(true);
-    const overrides = methods.getValues();
+      try {
+        setAGerar(true);
+        setErro(null);
 
-    if (guardar) {
-      await supabase.from('escuteiros').update(overrides).eq('id', id);
+        const { data: sessao } = await supabase.auth.getSession();
+
+        const resp = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gerar-ficha`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${sessao.session?.access_token}`,
+            },
+            body: JSON.stringify({ id, apenasPreview: true }),
+          }
+        );
+
+        if (!resp.ok) {
+          throw new Error('Falha ao gerar o documento PDF.');
+        }
+
+        const blob = await resp.blob();
+        setPdfUrl(URL.createObjectURL(blob));
+      } catch (err) {
+        console.error('Erro ao gerar preview:', err);
+        setErro('Não foi possível carregar a pré-visualização da ficha.');
+      } finally {
+        setAGerar(false);
+      }
     }
 
-    const { data: sessao } = await supabase.auth.getSession();
-    const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gerar-ficha`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${sessao.session?.access_token}`,
-      },
-      body: JSON.stringify({ id, overrides, apenasPreview: !guardar }),
-    });
-
-    const blob = await resp.blob();
-    setPdfUrl(URL.createObjectURL(blob));
-    setAGerar(false);
-  }
-
-  if (loading) return <p className="p-6 text-sm text-gray-500">A carregar...</p>;
+    carregarEGerarPDF();
+  }, [id]);
 
   return (
-    <div className="grid min-h-screen grid-cols-1 md:grid-cols-2">
-      {/* Coluna de edição */}
-      <div className="overflow-y-auto border-r border-gray-200 p-6">
-        <button onClick={() => navigate('/dashboard')} className="mb-4 text-xs text-gray-500">
-          ← Voltar ao Dashboard
-        </button>
-        <h1 className="mb-4 text-lg font-bold text-aea-roxo">Editar antes de exportar</h1>
-
-        <FormProvider {...methods}>
-          <div className="space-y-8">
-            <Step1Identificacao />
-            <Step2Habilitacoes />
-            <Step3SaudeReligiao />
-          </div>
-        </FormProvider>
-
-        <div className="mt-6 flex gap-2">
+    <div className="flex flex-col h-screen bg-slate-100">
+      {/* Barra Superior / Ações */}
+      <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200">
+        <div className="flex items-center gap-4">
           <button
-            onClick={() => gerarPreview(false)}
-            disabled={aGerar}
-            className="flex-1 rounded-lg border border-aea-roxo px-4 py-2.5 text-sm font-medium text-aea-roxo disabled:opacity-50"
+            onClick={() => navigate('/dashboard')}
+            className="text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors flex items-center gap-1"
           >
-            {aGerar ? 'A gerar...' : 'Pré-visualizar'}
+            ← Voltar ao Dashboard
           </button>
-          <button
-            onClick={() => gerarPreview(true)}
-            disabled={aGerar}
-            className="flex-1 rounded-lg bg-aea-roxo px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
-          >
-            Guardar e Exportar PDF
-          </button>
+          <span className="text-slate-300">|</span>
+          <h1 className="text-base font-bold text-slate-800">
+            Pré-visualização da Ficha de Inscrição
+          </h1>
         </div>
-      </div>
 
-      {/* Coluna de preview visual */}
-      <div className="flex items-center justify-center bg-gray-100 p-4">
-        {pdfUrl ? (
-          <iframe src={pdfUrl} title="Pré-visualização da ficha" className="h-full w-full rounded-lg border" />
-        ) : (
-          <p className="text-sm text-gray-400">Clica em "Pré-visualizar" para ver a ficha</p>
+        {pdfUrl && (
+          <a
+            href={pdfUrl}
+            download={`ficha_escuteiro_${id}.pdf`}
+            className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-all flex items-center gap-2"
+          >
+             Descarregar PDF
+          </a>
         )}
-      </div>
+      </header>
+
+      {/* Área Central de Exibição */}
+      <main className="flex-1 p-4 md:p-6 flex items-center justify-center overflow-hidden">
+        {aGerar && (
+          <div className="flex flex-col items-center gap-3 text-slate-500 font-medium text-sm">
+            <span className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            A gerar a pré-visualização da ficha...
+          </div>
+        )}
+
+        {erro && (
+          <div className="p-4 bg-red-50 text-red-800 border border-red-200 rounded-lg text-sm font-medium">
+            {erro}
+          </div>
+        )}
+
+        {!aGerar && !erro && pdfUrl && (
+          <iframe
+            src={pdfUrl}
+            title="Pré-visualização da ficha"
+            className="w-full h-full max-w-5xl rounded-xl border border-slate-200 shadow-md bg-white"
+          />
+        )}
+      </main>
     </div>
   );
 }

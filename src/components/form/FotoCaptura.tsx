@@ -1,5 +1,5 @@
-import { useRef, useState, useEffect } from 'react';
-import { Camera, UploadCloud, Trash2, ImagePlus, CheckCircle2, User } from 'lucide-react';
+import { useRef, useEffect, useMemo } from 'react';
+import { Camera, Trash2, ImagePlus, CheckCircle2, User } from 'lucide-react';
 
 interface Props {
   fotoProps: {
@@ -10,21 +10,27 @@ interface Props {
 
 export default function FotoCaptura({ fotoProps }: Props) {
   const { foto, setFoto } = fotoProps;
-  const [preview, setPreview] = useState<string | undefined>(undefined);
+  // const [preview, setPreview] = useState<string | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Sincroniza a pré-visualização se já existir uma foto guardada no estado
-  useEffect(() => {
-    if (foto) {
-      const objectUrl = URL.createObjectURL(foto);
-      setPreview(objectUrl);
+  // Deriva a URL diretamente sem necessitar de setState ou useEffect
+const preview = useMemo(() => {
+  if (!foto) return undefined;
 
-      // Libertação de memória
-      return () => URL.revokeObjectURL(objectUrl);
-    } else {
-      setPreview(undefined);
+  const objectUrl = URL.createObjectURL(foto);
+
+  // A limpeza ocorre automaticamente quando foto muda ou o componente desmonta
+  return objectUrl;
+}, [foto]);
+
+// Lembra-te de revogar a URL para evitar fugas de memória se o componente desmontar
+useEffect(() => {
+  return () => {
+    if (preview) {
+      URL.revokeObjectURL(preview);
     }
-  }, [foto]);
+  };
+}, [preview]);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -35,7 +41,6 @@ export default function FotoCaptura({ fotoProps }: Props) {
 
   function limpar() {
     setFoto(undefined);
-    setPreview(undefined);
     if (inputRef.current) {
       inputRef.current.value = '';
     }
